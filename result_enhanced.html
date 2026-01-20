@@ -1,0 +1,489 @@
+{% extends "base.html" %}
+
+{% block title %}Enhanced Risk Assessment Results - DiabetesPredict Pro{% endblock %}
+
+{% block content %}
+<style>
+/* Enhanced styles for the improved result page */
+.result-card {
+    text-align: center;
+    padding: 2rem;
+    margin: 2rem 0;
+    border-radius: 16px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    transition: transform 0.3s ease;
+}
+
+.result-card:hover {
+    transform: translateY(-2px);
+}
+
+.result-positive {
+    background: linear-gradient(135deg, #fff5f5, #fed7d7);
+    border: 3px solid #e53e3e;
+}
+
+.result-moderate {
+    background: linear-gradient(135deg, #fffbeb, #fef08a);
+    border: 3px solid #d69e2e;
+}
+
+.result-negative {
+    background: linear-gradient(135deg, #f0fff4, #c6f6d5);
+    border: 3px solid #38a169;
+}
+
+.clinical-info {
+    background: linear-gradient(135deg, #ebf4ff, #bee3f8);
+    border: 2px solid #3182ce;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+}
+
+.risk-factor-item {
+    background: #f7fafc;
+    border-left: 4px solid #3182ce;
+    padding: 1rem;
+    margin: 0.5rem 0;
+    border-radius: 0 8px 8px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.risk-factor-high {
+    border-left-color: #e53e3e;
+    background: #fff5f5;
+}
+
+.risk-factor-moderate {
+    border-left-color: #d69e2e;
+    background: #fffbeb;
+}
+
+.risk-factor-low {
+    border-left-color: #38a169;
+    background: #f0fff4;
+}
+
+.recommendation-item {
+    background: #f7fafc;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 0.5rem 0;
+    border-left: 4px solid #3182ce;
+}
+
+.recommendation-urgent {
+    border-left-color: #e53e3e;
+    background: #fff5f5;
+}
+
+.recommendation-important {
+    border-left-color: #d69e2e;
+    background: #fffbeb;
+}
+
+.recommendation-general {
+    border-left-color: #38a169;
+    background: #f0fff4;
+}
+
+.clinical-score {
+    font-size: 2rem;
+    font-weight: bold;
+    margin: 1rem 0;
+}
+
+.score-high { color: #e53e3e; }
+.score-moderate { color: #d69e2e; }
+.score-low { color: #38a169; }
+
+.feature-importance {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.feature-item {
+    background: #f7fafc;
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+    border: 2px solid #e2e8f0;
+}
+
+.model-info {
+    background: linear-gradient(135deg, #edf2f7, #cbd5e0);
+    border: 2px solid #4a5568;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+}
+
+@media (max-width: 768px) {
+    .result-card {
+        padding: 1rem;
+    }
+    
+    .feature-importance {
+        grid-template-columns: 1fr;
+    }
+    
+    .risk-factor-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+</style>
+
+<div class="card result-card" id="result-card">
+    <div class="result-icon" style="font-size: 4rem; margin-bottom: 1rem;">
+        <span id="result-icon">✅</span>
+    const probabilityFill = document.getElementById('probability-fill');
+    const resultCard = document.getElementById('result-card');
+    const resultIcon = document.getElementById('result-icon');
+    const resultTitle = document.getElementById('result-title');
+    updateResultDisplay(probabilityFill, resultCard, resultIcon, resultTitle);
+        Assessment Complete
+    </h2>
+    
+    <div style="font-size: 1.2rem; margin-bottom: 1rem;">
+        <strong id="class-name">{{ result.class_name or 'Processing...' }}</strong>
+    </div>
+    
+    <div class="probability-display" style="font-size: 1.1rem; margin-bottom: 1rem;">
+        Confidence: <strong id="confidence-display">{{ "%.1f"|format((result.confidence or 0.5) * 100) }}%</strong>
+    </div>
+    
+            <div class="probability-bar" style="width: 100%; height: 24px; background: #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 1rem;">
+                <div class="probability-fill" id="probability-fill"
+                    data-confidence="{{ ((result.confidence or 0.5) * 100)|round(1) }}"
+                    data-risk-level="{{ result.risk_level|default('Low') }}"
+                    data-prediction="{{ result.prediction|default(0) }}"
+                    data-class-name="{{ result.class_name|default('Assessment Complete') }}"
+                    data-model-used="{{ result.model_used|default('') }}"
+                ></div>
+            </div>
+    
+    {% if result.clinical_risk_score %}
+    <div class="clinical-score score-{{ 'high' if result.clinical_risk_score > 0.6 else 'moderate' if result.clinical_risk_score > 0.3 else 'low' }}">
+        Clinical Risk Score: {{ "%.2f"|format(result.clinical_risk_score) }}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Enhanced Clinical Assessment Section -->
+{% if result.risk_factors or result.recommendations %}
+<div class="clinical-info">
+    <h3 style="color: var(--primary-color); margin-bottom: 1.5rem;">
+        <i class="fas fa-stethoscope"></i> Enhanced Clinical Assessment
+    </h3>
+    
+    {% if result.risk_factors %}
+    <div style="margin-bottom: 2rem;">
+        <h4 style="color: var(--text-primary); margin-bottom: 1rem;">
+            <i class="fas fa-exclamation-triangle"></i> Identified Risk Factors ({{ result.risk_factors|length }})
+        </h4>
+        {% for factor in result.risk_factors %}
+        <div class="risk-factor-item {% if 'high' in factor.lower() or 'severe' in factor.lower() or 'very' in factor.lower() %}risk-factor-high{% elif 'moderate' in factor.lower() or 'elevated' in factor.lower() %}risk-factor-moderate{% else %}risk-factor-low{% endif %}">
+            <div>
+                <i class="fas fa-info-circle"></i>
+                {{ factor }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    {% if result.recommendations %}
+    <div>
+        <h4 style="color: var(--text-primary); margin-bottom: 1rem;">
+            <i class="fas fa-user-md"></i> Clinical Recommendations ({{ result.recommendations|length }})
+        </h4>
+        {% for recommendation in result.recommendations %}
+        <div class="recommendation-item {% if 'immediate' in recommendation.lower() or 'urgent' in recommendation.lower() %}recommendation-urgent{% elif 'evaluation' in recommendation.lower() or 'consider' in recommendation.lower() %}recommendation-important{% else %}recommendation-general{% endif %}">
+            <i class="fas {% if 'immediate' in recommendation.lower() %}fa-exclamation-triangle{% elif 'evaluation' in recommendation.lower() %}fa-calendar-check{% else %}fa-lightbulb{% endif %}"></i>
+            {{ recommendation }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Model and Technical Information -->
+<div class="model-info">
+    <h3 style="color: var(--text-primary); margin-bottom: 1rem;">
+        <i class="fas fa-brain"></i> Model Information
+    </h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+        <div>
+            <strong>Model Used:</strong><br>
+            <span style="color: var(--primary-color);">{{ result.model_used or 'Enhanced Clinical Assessment' }}</span>
+        </div>
+        <div>
+            <strong>Features Analyzed:</strong><br>
+            <span style="color: var(--text-secondary);">
+            {% if result.features_used %}
+                {{ result.features_used|join(', ') }}
+            {% else %}
+                Clinical parameters
+            {% endif %}
+            </span>
+        </div>
+        <div>
+            <strong>Assessment Type:</strong><br>
+            <span style="color: var(--text-secondary);">
+            {% if result.prediction_type == 'ddfh' or result.model_used and 'DDFH' in result.model_used %}
+                DDFH Multi-class (3 categories)
+            {% else %}
+                PIMA Binary (2 categories)
+            {% endif %}
+            </span>
+        </div>
+        {% if result.medical_validation %}
+        <div>
+            <strong>Medical Validation:</strong><br>
+            <span class="medical-validation-text {% if result.medical_validation.override_applied %}override-applied{% else %}aligned{% endif %}">
+<style>
+.medical-validation-text.override-applied { color: orange; }
+.medical-validation-text.aligned { color: green; }
+</style>
+                {% if result.medical_validation.override_applied %}
+                    Clinical Override Applied
+                {% else %}
+                    Model & Clinical Aligned
+                {% endif %}
+            </span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Feature Importance Visualization -->
+{% if result.input_data %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i class="fas fa-chart-bar"></i> Input Parameters Analysis
+        </h3>
+    </div>
+    <div class="feature-importance">
+    {% if result.shap_values and result.feature_names %}
+    <div class="card" style="margin:2rem 0;">
+        <h3 style="color: var(--primary-color); margin-bottom: 1rem;">
+            <i class="fas fa-brain"></i> Model Explanation (XAI)
+        </h3>
+        <div class="feature-importance">
+            {% for name, value in result.feature_names|zip(result.shap_values) %}
+            <div class="feature-item">
+                <div style="font-weight: bold; margin-bottom: 0.5rem;">{{ name }}</div>
+                <div style="font-size: 1.2rem; color: var(--primary-color);">{{ '%.3f'|format(value) }}</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                    Contribution to prediction
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div style="font-size:0.9rem; color:var(--text-secondary); margin-top:1rem;">
+            <i class="fas fa-info-circle"></i> Positive values push towards diabetes, negative towards non-diabetes.
+        </div>
+    </div>
+    {% endif %}
+        {% for key, value in result.input_data.items() %}
+        {% if key in ['glucose', 'hba1c', 'bmi', 'age', 'pregnancies', 'diabetes_pedigree'] %}
+        <div class="feature-item">
+            <div style="font-weight: bold; margin-bottom: 0.5rem;">
+                {{ key.replace('_', ' ').title() }}
+            </div>
+            <div style="font-size: 1.2rem; color: var(--primary-color);">
+                {% if key == 'glucose' %}
+                    {{ value }} mg/dL
+                {% elif key == 'hba1c' %}
+                    {{ value }}%
+                {% elif key == 'bmi' %}
+                    {{ "%.1f"|format(value) }}
+                {% elif key == 'age' %}
+                    {{ value }} years
+                {% elif key == 'pregnancies' %}
+                    {{ value }}
+                {% elif key == 'diabetes_pedigree' %}
+                    {{ "%.3f"|format(value) }}
+                {% else %}
+                    {{ value }}
+                {% endif %}
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                {% if key == 'glucose' %}
+                    {% if value >= 200 %}High (≥200){% elif value >= 140 %}Elevated (≥140){% elif value >= 100 %}Borderline (≥100){% else %}Normal (<100){% endif %}
+                {% elif key == 'hba1c' %}
+                    {% if value >= 6.5 %}Diabetic (≥6.5%){% elif value >= 5.7 %}Pre-diabetic (5.7-6.4%){% else %}Normal (<5.7%){% endif %}
+                {% elif key == 'bmi' %}
+                    {% if value >= 35 %}Severely Obese (≥35){% elif value >= 30 %}Obese (≥30){% elif value >= 25 %}Overweight (≥25){% else %}Normal (<25){% endif %}
+                {% elif key == 'age' %}
+                    {% if value >= 65 %}High Risk (≥65){% elif value >= 45 %}Moderate Risk (≥45){% else %}Low Risk (<45){% endif %}
+                {% else %}
+                    Analyzed
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Action Buttons -->
+<div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin: 2rem 0;">
+    <a href="{{ url_for('predict') }}" class="btn btn-primary">
+        <i class="fas fa-redo"></i> New PIMA Assessment
+    </a>
+    <a href="{{ url_for('predict_enhanced') }}" class="btn btn-secondary">
+        <i class="fas fa-chart-area"></i> Enhanced DDFH Assessment
+    </a>
+    <a href="/api/models/status" class="btn btn-info" target="_blank">
+        <i class="fas fa-server"></i> Model Status
+    </a>
+    <button onclick="generateReport()" class="btn btn-success">
+        <i class="fas fa-file-pdf"></i> Generate Report
+    </button>
+</div>
+
+<!-- Medical Disclaimer -->
+<div class="card" style="margin-top: 2rem;">
+    <div style="background: linear-gradient(135deg, #fff5f5, #fed7d7); padding: 2rem; border-radius: 12px; text-align: center;">
+        <h3 style="color: var(--danger-color); margin-bottom: 1rem;">
+            <i class="fas fa-user-md"></i> Important Medical Disclaimer
+        </h3>
+        <p style="margin-bottom: 1rem; color: var(--text-primary);">
+            This enhanced assessment uses <strong>evidence-based clinical algorithms</strong> and should be used for <strong>educational purposes only</strong>.
+        </p>
+        <p style="margin: 0; color: var(--text-primary);">
+            Always consult with qualified healthcare professionals for medical advice, diagnosis, and treatment of diabetes or any health condition.
+        </p>
+    </div>
+</div>
+
+<script>
+// Enhanced JavaScript for the improved result page
+document.addEventListener('DOMContentLoaded', function() {
+    const probabilityFill = document.getElementById('probability-fill');
+    const resultCard = document.getElementById('result-card');
+    const resultIcon = document.getElementById('result-icon');
+    const resultTitle = document.getElementById('result-title');
+    // Read all result data from data-* attributes
+    const confidence = parseFloat(probabilityFill.getAttribute('data-confidence')) || 50;
+    const riskLevel = probabilityFill.getAttribute('data-risk-level') || 'Low';
+    const prediction = parseInt(probabilityFill.getAttribute('data-prediction')) || 0;
+    const className = probabilityFill.getAttribute('data-class-name') || 'Assessment Complete';
+    const modelUsed = probabilityFill.getAttribute('data-model-used') || '';
+    // Set probability bar width
+    probabilityFill.style.width = confidence + '%';
+    // Update styling based on risk level
+    if (riskLevel === 'High' || prediction === 2) {
+        resultCard.className = 'card result-card result-positive';
+        resultIcon.textContent = '⚠️';
+        probabilityFill.className = 'probability-fill';
+        probabilityFill.style.background = 'linear-gradient(90deg, #e53e3e, #fc8181)';
+    } else if (riskLevel === 'Moderate' || prediction === 1) {
+        resultCard.className = 'card result-card result-moderate';
+        resultIcon.textContent = '⚡';
+        probabilityFill.className = 'probability-fill';
+        probabilityFill.style.background = 'linear-gradient(90deg, #d69e2e, #f6ad55)';
+    } else {
+        resultCard.className = 'card result-card result-negative';
+        resultIcon.textContent = '✅';
+        probabilityFill.className = 'probability-fill';
+        probabilityFill.style.background = 'linear-gradient(90deg, #38a169, #68d391)';
+    }
+    // Update title and display enhanced information
+    resultTitle.textContent = `Enhanced Clinical Assessment - ${className}`;
+    animateElements();
+    setupInteractiveFeatures();
+});
+
+function animateElements() {
+    // Animate risk factors
+    const riskFactors = document.querySelectorAll('.risk-factor-item');
+    riskFactors.forEach((factor, index) => {
+        factor.style.opacity = '0';
+        factor.style.transform = 'translateX(-20px)';
+        setTimeout(() => {
+            factor.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+            factor.style.opacity = '1';
+            factor.style.transform = 'translateX(0)';
+        }, index * 100);
+    });
+    
+    // Animate recommendations
+    const recommendations = document.querySelectorAll('.recommendation-item');
+    recommendations.forEach((rec, index) => {
+        rec.style.opacity = '0';
+        rec.style.transform = 'translateY(10px)';
+        setTimeout(() => {
+            rec.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+            rec.style.opacity = '1';
+            rec.style.transform = 'translateY(0)';
+        }, (index * 100) + 500);
+    });
+}
+
+function setupInteractiveFeatures() {
+    // Add hover effects to feature items
+    const featureItems = document.querySelectorAll('.feature-item');
+    featureItems.forEach(item => {
+        item.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+            this.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+        });
+        
+        item.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = 'none';
+        });
+    });
+}
+
+function generateReport() {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+    button.disabled = true;
+    
+    // Simulate report generation (replace with actual implementation)
+    setTimeout(() => {
+        button.innerHTML = originalText;
+        button.disabled = false;
+        
+        // Show success message
+        const message = document.createElement('div');
+        message.style.cssText = 'position: fixed; top: 20px; right: 20px; background: var(--success-color); color: white; padding: 1rem 2rem; border-radius: 8px; z-index: 1000; animation: slideIn 0.5s ease;';
+        message.innerHTML = '<i class="fas fa-check"></i> Report generated successfully!';
+        document.body.appendChild(message);
+        
+        setTimeout(() => {
+            message.remove();
+        }, 3000);
+        
+        // Here you would typically trigger the actual PDF generation
+        // For now, we'll show a placeholder message
+        alert('Report generation feature coming soon!\n\nThis will generate a comprehensive PDF report with:\n- Clinical assessment results\n- Risk factor analysis\n- Personalized recommendations\n- Treatment guidelines');
+    }, 2000);
+}
+
+// Add animation keyframes
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from { transform: translateX(100%); }
+        to { transform: translateX(0); }
+    }
+`;
+document.head.appendChild(style);
+</script>
+
+{% endblock %}
